@@ -1,0 +1,4 @@
+xuwachannel_accelerator_sinit.lo: xuwachannel_accelerator_sinit.c \
+ /opt/poky/2.1+snapshot/sysroots/cortexa9hf-neon-poky-linux-gnueabi/usr/include/stdc-predef.h
+
+/opt/poky/2.1+snapshot/sysroots/cortexa9hf-neon-poky-linux-gnueabi/usr/include/stdc-predef.h:
