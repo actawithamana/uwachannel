@@ -12,7 +12,7 @@
 # even the implied warranty of MERCHANTABILITY or FITNESS FOR A
 # PARTICULAR PURPOSE.
 
-MAKE=make
+
 
 
 am__is_gnu_make = { \
@@ -86,7 +86,7 @@ POST_INSTALL = :
 NORMAL_UNINSTALL = :
 PRE_UNINSTALL = :
 POST_UNINSTALL = :
-build_triplet = x86_64-pc-linux-gnu
+build_triplet = x86_64-unknown-linux-gnu
 host_triplet = arm-poky-linux-gnueabi
 subdir = uwachannel
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
@@ -136,20 +136,20 @@ am_libasound_module_pcm_uwa_la_OBJECTS = pcm_uwa.lo \
 	xuwachannel_accelerator.lo xuwachannel_accelerator_sinit.lo
 libasound_module_pcm_uwa_la_OBJECTS =  \
 	$(am_libasound_module_pcm_uwa_la_OBJECTS)
-AM_V_lt = $(am__v_lt_1)
-am__v_lt_ = $(am__v_lt_1)
+AM_V_lt = $(am__v_lt_$(V))
+am__v_lt_ = $(am__v_lt_$(AM_DEFAULT_VERBOSITY))
 am__v_lt_0 = --silent
 am__v_lt_1 = 
-AM_V_P = $(am__v_P_1)
-am__v_P_ = $(am__v_P_1)
+AM_V_P = $(am__v_P_$(V))
+am__v_P_ = $(am__v_P_$(AM_DEFAULT_VERBOSITY))
 am__v_P_0 = false
 am__v_P_1 = :
-AM_V_GEN = $(am__v_GEN_1)
-am__v_GEN_ = $(am__v_GEN_1)
+AM_V_GEN = $(am__v_GEN_$(V))
+am__v_GEN_ = $(am__v_GEN_$(AM_DEFAULT_VERBOSITY))
 am__v_GEN_0 = @echo "  GEN     " $@;
 am__v_GEN_1 = 
-AM_V_at = $(am__v_at_1)
-am__v_at_ = $(am__v_at_1)
+AM_V_at = $(am__v_at_$(V))
+am__v_at_ = $(am__v_at_$(AM_DEFAULT_VERBOSITY))
 am__v_at_0 = @
 am__v_at_1 = 
 DEFAULT_INCLUDES = -I. -I$(top_builddir)
@@ -162,16 +162,16 @@ LTCOMPILE = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) \
 	$(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) \
 	$(AM_CFLAGS) $(CFLAGS)
-AM_V_CC = $(am__v_CC_1)
-am__v_CC_ = $(am__v_CC_1)
+AM_V_CC = $(am__v_CC_$(V))
+am__v_CC_ = $(am__v_CC_$(AM_DEFAULT_VERBOSITY))
 am__v_CC_0 = @echo "  CC      " $@;
 am__v_CC_1 = 
 CCLD = $(CC)
 LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
 	$(AM_LDFLAGS) $(LDFLAGS) -o $@
-AM_V_CCLD = $(am__v_CCLD_1)
-am__v_CCLD_ = $(am__v_CCLD_1)
+AM_V_CCLD = $(am__v_CCLD_$(V))
+am__v_CCLD_ = $(am__v_CCLD_$(AM_DEFAULT_VERBOSITY))
 am__v_CCLD_0 = @echo "  CCLD    " $@;
 am__v_CCLD_1 = 
 SOURCES = $(libasound_module_pcm_uwa_la_SOURCES)
@@ -202,25 +202,25 @@ ETAGS = etags
 CTAGS = ctags
 am__DIST_COMMON = $(srcdir)/Makefile.in $(top_srcdir)/depcomp
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
-ACLOCAL = ${SHELL} /home/actawithamana/Work/alsa-plugins-1.1.4-arm/missing aclocal-1.15
-ALSA_CFLAGS = -I/opt/poky/2.1+snapshot/sysroots/cortexa9hf-neon-poky-linux-gnueabi/usr/include/alsa
+ACLOCAL = ${SHELL} /home/actawithamana/Downloads/alsa-plugins-1.1.4-arm/missing aclocal-1.15
+ALSA_CFLAGS = -I/opt/poky/2.1/sysroots/cortexa9hf-neon-poky-linux-gnueabi/usr/include/alsa
 ALSA_DATA_DIR = ${prefix}/share/alsa
 ALSA_LIBS = -lasound
 ALSA_PLUGIN_DIR = /usr/lib/alsa-lib
 AMTAR = $${TAR-tar}
 AM_DEFAULT_VERBOSITY = 1
 AR = arm-poky-linux-gnueabi-ar
-AUTOCONF = ${SHELL} /home/actawithamana/Work/alsa-plugins-1.1.4-arm/missing autoconf
-AUTOHEADER = ${SHELL} /home/actawithamana/Work/alsa-plugins-1.1.4-arm/missing autoheader
-AUTOMAKE = ${SHELL} /home/actawithamana/Work/alsa-plugins-1.1.4-arm/missing automake-1.15
+AUTOCONF = ${SHELL} /home/actawithamana/Downloads/alsa-plugins-1.1.4-arm/missing autoconf
+AUTOHEADER = ${SHELL} /home/actawithamana/Downloads/alsa-plugins-1.1.4-arm/missing autoheader
+AUTOMAKE = ${SHELL} /home/actawithamana/Downloads/alsa-plugins-1.1.4-arm/missing automake-1.15
 AVCODEC_CFLAGS = 
 AVCODEC_HEADER = 
 AVCODEC_LIBS =  -lavcodec
 AWK = gawk
-CC = arm-poky-linux-gnueabi-gcc  -march=armv7-a -marm -mfpu=neon  -mfloat-abi=hard -mcpu=cortex-a9 --sysroot=/opt/poky/2.1+snapshot/sysroots/cortexa9hf-neon-poky-linux-gnueabi
-CCDEPMODE = depmode=none
+CC = arm-poky-linux-gnueabi-gcc  -march=armv7-a -marm -mfpu=neon  -mfloat-abi=hard -mcpu=cortex-a9 --sysroot=/opt/poky/2.1/sysroots/cortexa9hf-neon-poky-linux-gnueabi
+CCDEPMODE = depmode=gcc3
 CFLAGS =  -O2 -pipe -g -feliminate-unused-debug-types 
-CPP = arm-poky-linux-gnueabi-gcc -E  -march=armv7-a -marm -mfpu=neon  -mfloat-abi=hard -mcpu=cortex-a9 --sysroot=/opt/poky/2.1+snapshot/sysroots/cortexa9hf-neon-poky-linux-gnueabi
+CPP = arm-poky-linux-gnueabi-gcc -E  -march=armv7-a -marm -mfpu=neon  -mfloat-abi=hard -mcpu=cortex-a9 --sysroot=/opt/poky/2.1/sysroots/cortexa9hf-neon-poky-linux-gnueabi
 CPPFLAGS = 
 CYGPATH_W = echo
 DBUS_CFLAGS = 
@@ -244,7 +244,7 @@ INSTALL_SCRIPT = ${INSTALL}
 INSTALL_STRIP_PROGRAM = $(install_sh) -c -s
 JACK_CFLAGS = 
 JACK_LIBS = 
-LD = arm-poky-linux-gnueabi-ld  --sysroot=/opt/poky/2.1+snapshot/sysroots/cortexa9hf-neon-poky-linux-gnueabi
+LD = arm-poky-linux-gnueabi-ld  --sysroot=/opt/poky/2.1/sysroots/cortexa9hf-neon-poky-linux-gnueabi
 LDFLAGS = -Wl,-O1 -Wl,--hash-style=gnu -Wl,--as-needed
 LDFLAGS_NOUNDEFINED = -Wl,--no-undefined
 LIBOBJS = 
@@ -255,7 +255,7 @@ LN_S = ln -s
 LTLIBOBJS = 
 LT_SYS_LIBRARY_PATH = 
 MAINT = 
-MAKEINFO = ${SHELL} /home/actawithamana/Work/alsa-plugins-1.1.4-arm/missing makeinfo
+MAKEINFO = ${SHELL} /home/actawithamana/Downloads/alsa-plugins-1.1.4-arm/missing makeinfo
 MANIFEST_TOOL = :
 MKDIR_P = /bin/mkdir -p
 NM = arm-poky-linux-gnueabi-nm
@@ -272,33 +272,33 @@ PACKAGE_TARNAME = alsa-plugins
 PACKAGE_URL = 
 PACKAGE_VERSION = 1.1.4
 PATH_SEPARATOR = :
-PKG_CONFIG = /opt/poky/2.1+snapshot/sysroots/x86_64-pokysdk-linux/usr/bin/pkg-config
+PKG_CONFIG = /opt/poky/2.1/sysroots/x86_64-pokysdk-linux/usr/bin/pkg-config
 PKG_CONFIG_LIBDIR = 
-PKG_CONFIG_PATH = /opt/poky/2.1+snapshot/sysroots/cortexa9hf-neon-poky-linux-gnueabi/usr/lib/pkgconfig:/opt/poky/2.1+snapshot/sysroots/cortexa9hf-neon-poky-linux-gnueabi/usr/share/pkgconfig
+PKG_CONFIG_PATH = /opt/poky/2.1/sysroots/cortexa9hf-neon-poky-linux-gnueabi/usr/lib/pkgconfig:/opt/poky/2.1/sysroots/cortexa9hf-neon-poky-linux-gnueabi/usr/share/pkgconfig
 RANLIB = arm-poky-linux-gnueabi-ranlib
 SED = sed
-SET_MAKE = MAKE=make
-SHELL = /bin/bash
+SET_MAKE = 
+SHELL = /bin/sh
 STRIP = arm-poky-linux-gnueabi-strip
 VERSION = 1.1.4
-abs_builddir = /home/actawithamana/Work/alsa-plugins-1.1.4-arm/uwachannel
-abs_srcdir = /home/actawithamana/Work/alsa-plugins-1.1.4-arm/uwachannel
-abs_top_builddir = /home/actawithamana/Work/alsa-plugins-1.1.4-arm
-abs_top_srcdir = /home/actawithamana/Work/alsa-plugins-1.1.4-arm
+abs_builddir = /home/actawithamana/Downloads/alsa-plugins-1.1.4-arm/uwachannel
+abs_srcdir = /home/actawithamana/Downloads/alsa-plugins-1.1.4-arm/uwachannel
+abs_top_builddir = /home/actawithamana/Downloads/alsa-plugins-1.1.4-arm
+abs_top_srcdir = /home/actawithamana/Downloads/alsa-plugins-1.1.4-arm
 ac_ct_AR = 
 ac_ct_CC = 
 ac_ct_DUMPBIN = 
-am__include = #
+am__include = include
 am__leading_dot = .
 am__quote = 
 am__tar = $${TAR-tar} chof - "$$tardir"
 am__untar = $${TAR-tar} xf -
 bindir = ${exec_prefix}/bin
-build = x86_64-pc-linux-gnu
-build_alias = x86_64-linux
+build = x86_64-unknown-linux-gnu
+build_alias = 
 build_cpu = x86_64
 build_os = linux-gnu
-build_vendor = pc
+build_vendor = unknown
 builddir = .
 datadir = ${datarootdir}
 datarootdir = ${prefix}/share
@@ -313,7 +313,7 @@ host_vendor = poky
 htmldir = ${docdir}
 includedir = ${prefix}/include
 infodir = ${datarootdir}/info
-install_sh = ${SHELL} /home/actawithamana/Work/alsa-plugins-1.1.4-arm/install-sh
+install_sh = ${SHELL} /home/actawithamana/Downloads/alsa-plugins-1.1.4-arm/install-sh
 libdir = ${exec_prefix}/lib
 libexecdir = ${exec_prefix}/libexec
 localedir = ${datarootdir}/locale
@@ -341,7 +341,7 @@ top_builddir = ..
 top_srcdir = ..
 asound_module_pcm_uwa_LTLIBRARIES = libasound_module_pcm_uwa.la
 asound_module_pcm_uwadir = /usr/lib/alsa-lib
-AM_CFLAGS = -Wall -g -I/opt/poky/2.1+snapshot/sysroots/cortexa9hf-neon-poky-linux-gnueabi/usr/include/alsa
+AM_CFLAGS = -Wall -g -I/opt/poky/2.1/sysroots/cortexa9hf-neon-poky-linux-gnueabi/usr/include/alsa
 AM_LDFLAGS = -module -avoid-version -export-dynamic -no-undefined $(LDFLAGS_NOUNDEFINED)
 libasound_module_pcm_uwa_la_SOURCES = pcm_uwa.c xuwachannel_accelerator.c \
 				      xuwachannel_accelerator_sinit.c uwachannel.h \
@@ -426,30 +426,30 @@ mostlyclean-compile:
 distclean-compile:
 	-rm -f *.tab.c
 
-# ./$(DEPDIR)/pcm_uwa.Plo
-# ./$(DEPDIR)/xuwachannel_accelerator.Plo
-# ./$(DEPDIR)/xuwachannel_accelerator_sinit.Plo
+include ./$(DEPDIR)/pcm_uwa.Plo
+include ./$(DEPDIR)/xuwachannel_accelerator.Plo
+include ./$(DEPDIR)/xuwachannel_accelerator_sinit.Plo
 
 .c.o:
-#	$(AM_V_CC)$(COMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
-#	$(AM_V_at)$(am__mv) $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Po
-	$(AM_V_CC)source='$<' object='$@' libtool=no \
-	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
-	$(AM_V_CC_no)$(COMPILE) -c -o $@ $<
+	$(AM_V_CC)$(COMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
+	$(AM_V_at)$(am__mv) $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Po
+#	$(AM_V_CC)source='$<' object='$@' libtool=no \
+#	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
+#	$(AM_V_CC_no)$(COMPILE) -c -o $@ $<
 
 .c.obj:
-#	$(AM_V_CC)$(COMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ `$(CYGPATH_W) '$<'`
-#	$(AM_V_at)$(am__mv) $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Po
-	$(AM_V_CC)source='$<' object='$@' libtool=no \
-	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
-	$(AM_V_CC_no)$(COMPILE) -c -o $@ `$(CYGPATH_W) '$<'`
+	$(AM_V_CC)$(COMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ `$(CYGPATH_W) '$<'`
+	$(AM_V_at)$(am__mv) $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Po
+#	$(AM_V_CC)source='$<' object='$@' libtool=no \
+#	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
+#	$(AM_V_CC_no)$(COMPILE) -c -o $@ `$(CYGPATH_W) '$<'`
 
 .c.lo:
-#	$(AM_V_CC)$(LTCOMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
-#	$(AM_V_at)$(am__mv) $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Plo
-	$(AM_V_CC)source='$<' object='$@' libtool=yes \
-	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
-	$(AM_V_CC_no)$(LTCOMPILE) -c -o $@ $<
+	$(AM_V_CC)$(LTCOMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
+	$(AM_V_at)$(am__mv) $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Plo
+#	$(AM_V_CC)source='$<' object='$@' libtool=yes \
+#	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
+#	$(AM_V_CC_no)$(LTCOMPILE) -c -o $@ $<
 
 mostlyclean-libtool:
 	-rm -f *.lo

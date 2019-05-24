@@ -36,18 +36,28 @@ typedef struct snd_pcm_uwa {
 	// CIR Buffer Pointers
 	int *cir_r_1_buff_0;
 	int *cir_r_1_buff_1;
+	int *cir_r_1_buff_2;
+	int *cir_r_1_buff_3;
 	int *cir_i_1_buff_0;
 	int *cir_i_1_buff_1;	
+	int *cir_i_1_buff_2;
+	int *cir_i_1_buff_3;
 	int *cir_r_2_buff_0;
 	int *cir_r_2_buff_1;
+	int *cir_r_2_buff_2;
+	int *cir_r_2_buff_3;
 	int *cir_i_2_buff_0;
 	int *cir_i_2_buff_1;
+	int *cir_i_2_buff_2;
+	int *cir_i_2_buff_3;
 	//CIR Status
 	int cir_pos; 
 	int ncir;
 	int start_flag;
 	int throw_unstable_flag;
-	int nfir_coef;
+	int ncoef;
+	long cir_update_rate_us;
+	snd_pcm_uframes_t cir_update_rate_frames;
 	// Propagation Delay (tau0) for two communication link
 	snd_pcm_channel_area_t *tau0[2];
 	int *buf_tau0[2];
@@ -254,15 +264,24 @@ static void reload_cir (snd_pcm_uwa_t* uwa, int index, int length){
 
 	
 	XUwachannel_accelerator_Write_c_re_1_0_V_Words(&uwa->uwa_ca_dev, 0, (uwa->cir_r_1_buff_0 + index), length);
-	XUwachannel_accelerator_Write_c_im_1_0_V_Words(&uwa->uwa_ca_dev, 0, (uwa->cir_i_1_buff_0 + index), length);
 	XUwachannel_accelerator_Write_c_re_1_1_V_Words(&uwa->uwa_ca_dev, 0, (uwa->cir_r_1_buff_1 + index), length);
+	XUwachannel_accelerator_Write_c_re_1_2_V_Words(&uwa->uwa_ca_dev, 0, (uwa->cir_r_1_buff_2 + index), length);
+	XUwachannel_accelerator_Write_c_re_1_3_V_Words(&uwa->uwa_ca_dev, 0, (uwa->cir_r_1_buff_3 + index), length);
+	
+	XUwachannel_accelerator_Write_c_im_1_0_V_Words(&uwa->uwa_ca_dev, 0, (uwa->cir_i_1_buff_0 + index), length);
 	XUwachannel_accelerator_Write_c_im_1_1_V_Words(&uwa->uwa_ca_dev, 0, (uwa->cir_i_1_buff_1 + index), length);
-
+	XUwachannel_accelerator_Write_c_im_1_2_V_Words(&uwa->uwa_ca_dev, 0, (uwa->cir_i_1_buff_2 + index), length);
+	XUwachannel_accelerator_Write_c_im_1_3_V_Words(&uwa->uwa_ca_dev, 0, (uwa->cir_i_1_buff_3 + index), length);
+	
 	XUwachannel_accelerator_Write_c_re_2_0_V_Words(&uwa->uwa_ca_dev, 0, (uwa->cir_r_2_buff_0 + index), length);
-	XUwachannel_accelerator_Write_c_im_2_0_V_Words(&uwa->uwa_ca_dev, 0, (uwa->cir_i_2_buff_0 + index), length);
 	XUwachannel_accelerator_Write_c_re_2_1_V_Words(&uwa->uwa_ca_dev, 0, (uwa->cir_r_2_buff_1 + index), length);
-	XUwachannel_accelerator_Write_c_im_2_1_V_Words(&uwa->uwa_ca_dev, 0, (uwa->cir_i_2_buff_1 + index), length);
+	XUwachannel_accelerator_Write_c_re_2_2_V_Words(&uwa->uwa_ca_dev, 0, (uwa->cir_r_2_buff_2 + index), length);
+	XUwachannel_accelerator_Write_c_re_2_3_V_Words(&uwa->uwa_ca_dev, 0, (uwa->cir_r_2_buff_3 + index), length);
 
+	XUwachannel_accelerator_Write_c_im_2_0_V_Words(&uwa->uwa_ca_dev, 0, (uwa->cir_i_2_buff_0 + index), length);
+	XUwachannel_accelerator_Write_c_im_2_1_V_Words(&uwa->uwa_ca_dev, 0, (uwa->cir_i_2_buff_1 + index), length);
+	XUwachannel_accelerator_Write_c_im_2_2_V_Words(&uwa->uwa_ca_dev, 0, (uwa->cir_i_2_buff_2 + index), length);
+	XUwachannel_accelerator_Write_c_im_2_3_V_Words(&uwa->uwa_ca_dev, 0, (uwa->cir_i_2_buff_3 + index), length);
 };
 
 
@@ -288,15 +307,28 @@ static int get_number_of_lines (FILE *file) {
 };
 
 
-static void cir_alloc_memory (int **buff_0, int **buff_1,  int size){
+static void cir_alloc_memory (int **buff_0, int **buff_1,
+							  int **buff_2, int **buff_3,  int size){
 
-	*buff_0 = (int *) calloc (1,(size/2)*sizeof(int));
+	*buff_0 = (int *) calloc (1,size*sizeof(int));
 	if (*buff_0 == NULL){
 		SNDERR("Malloc failed! \n");
 		exit(EXIT_FAILURE);
 	};
 
-	*buff_1 = (int *) calloc (1,(size/2)*sizeof(int));
+	*buff_1 = (int *) calloc (1,size*sizeof(int));
+	if (*buff_1 == NULL){
+		SNDERR("Malloc failed! \n");
+		exit(EXIT_FAILURE);
+	};
+
+	*buff_2 = (int *) calloc (1,size*sizeof(int));
+	if (*buff_1 == NULL){
+		SNDERR("Malloc failed! \n");
+		exit(EXIT_FAILURE);
+	};
+
+	*buff_3 = (int *) calloc (1,size*sizeof(int));
 	if (*buff_1 == NULL){
 		SNDERR("Malloc failed! \n");
 		exit(EXIT_FAILURE);
@@ -305,19 +337,24 @@ static void cir_alloc_memory (int **buff_0, int **buff_1,  int size){
 };
 
 
-static void cir_init_memory (FILE *cir_fd, int *buff_0, int *buff_1, int size){
+static void cir_init_memory (FILE *cir_fd, int *buff_0, int *buff_1, 
+							 int *buff_2, int *buff_3,  int size){
 	float cir;
 	int cir_int;
 	
 	for (int i=0 ; i < size ; i++){
-		for (int s = 0; s < 2 ;s++){
+		for (int s = 0; s < 4 ;s++){
 			fscanf(cir_fd, "%f", &cir);
 			cir_int = float2fixed(cir);
 			if (s == 0){
 				buff_0[i] = cir_int;
 			}else if (s == 1){
 				buff_1[i] = cir_int;
-			} 
+			}else if (s == 2){
+				buff_2[i] = cir_int;
+			}else if (s == 3){
+				buff_3[i] = cir_int;
+			}	 
 		}
 	}
 };
@@ -402,9 +439,9 @@ static snd_pcm_sframes_t uwa_transfer(snd_pcm_extplug_t *ext,
 	width = snd_pcm_format_physical_width(SND_PCM_FORMAT_S32);
 
 	//UWA Channel Accelerator (UWA-CA) Parameters
-	//int nframes = 64;			
+	int nframes = 96;			
 	int nchannels = 2;
-	int packetsize = size * nchannels ;
+	int packetsize = nframes * nchannels ;
 	float threshold = 0.2;
 	
 	//DMA transfer always UWA-CA packet size
@@ -438,7 +475,7 @@ static snd_pcm_sframes_t uwa_transfer(snd_pcm_extplug_t *ext,
 				printf("Start Emulator! \n");	
 	
 				// Update first array of CIR
-				reload_cir(uwa, uwa->cir_pos * uwa->nfir_coef/2, uwa->nfir_coef/2);
+				reload_cir(uwa, uwa->cir_pos * uwa->ncoef/4, uwa->ncoef/4);
 				printf ("CIR Updated, Position: %i \n", uwa->cir_pos);
 				uwa->cir_pos += 1;
 
@@ -472,7 +509,7 @@ static snd_pcm_sframes_t uwa_transfer(snd_pcm_extplug_t *ext,
 
 				//curent assumption is fixed 96*2 frame size; 
 				snd_pcm_areas_copy(dst_areas, dst_offset , uwa->uwa_output, 0,
-						  2, size, SND_PCM_FORMAT_S32);	
+						           2, size, SND_PCM_FORMAT_S32);	
 	
 				} else goto __retry; 
 
@@ -480,7 +517,7 @@ static snd_pcm_sframes_t uwa_transfer(snd_pcm_extplug_t *ext,
 
 			} else {
 				snd_pcm_areas_copy(dst_areas, dst_offset, src_areas , src_offset,
-				  	2, size, SND_PCM_FORMAT_S32);
+				  	               2, size, SND_PCM_FORMAT_S32);
 			};
 
 		};
@@ -488,10 +525,10 @@ static snd_pcm_sframes_t uwa_transfer(snd_pcm_extplug_t *ext,
 
 	} else {
 
-		//Set CIR every 0.128 second if Time variant channel
+		//Update CIR
 		if (uwa->time_variant){
-			if (uwa->framesent == 6144) {
-				reload_cir(uwa, uwa->cir_pos * uwa->nfir_coef/2, uwa->nfir_coef/2);
+			if (uwa->framesent == uwa->cir_update_rate_frames) {
+				reload_cir(uwa, uwa->cir_pos * uwa->ncoef/4, uwa->ncoef/4);
 				printf ("CIR Updated, Position: %i \n", uwa->cir_pos);
 				uwa->cir_pos += 1;
 				uwa->framesent = 0;
@@ -527,9 +564,8 @@ static snd_pcm_sframes_t uwa_transfer(snd_pcm_extplug_t *ext,
 				if (s!=0)
 					SNDERR("pthread_join RX failed");
 
-				//curent assumption is fixed 96*2 frame size; 
 				snd_pcm_areas_copy(dst_areas, dst_offset , uwa->uwa_output, 0,
-						  2, size, SND_PCM_FORMAT_S32);	
+						           2, size, SND_PCM_FORMAT_S32);	
 	
 		} else goto _retry; 
 
@@ -621,6 +657,7 @@ static int uwa_init (snd_pcm_extplug_t *ext) {
 			uwa->curpos[i] = 0;
 		};
 
+		
 		// UWA-CA Init
 		uwa->InstanceName = "uwachannel_accelerator";
 
@@ -682,14 +719,17 @@ static int uwa_init (snd_pcm_extplug_t *ext) {
 			SNDERR("CIR Number Inequal.");	
 		}
 
-		uwa->ncir=l/uwa->nfir_coef;
+		uwa->ncir=l/uwa->ncoef;
 
 		if (uwa->ncir == 1){
 			uwa->time_variant = 0;
-			printf("NCIR: %i , Time Invariant Channel. \n", uwa->ncir);
+			printf("NCIR Sets: %i , Time Invariant Channel. \n", uwa->ncir);
 		} else {
 			uwa->time_variant = 1;
-			printf("NCIR: %i , Time Variant Channel. \n", uwa->ncir);
+			printf("NCIR Sets: %i , Time Variant Channel. \n", uwa->ncir);
+			// CIR_update_rate init
+			uwa->cir_update_rate_frames = time_to_frames (ext->rate, uwa->cir_update_rate_us);
+			printf("CIR Update Rate: %lu us, %i frames.\n",uwa->cir_update_rate_us, (int)uwa->cir_update_rate_frames);
 		}
 		
 		
@@ -699,16 +739,24 @@ static int uwa_init (snd_pcm_extplug_t *ext) {
 		rewind (uwa->ch2_cir_i_fd);
 
 		printf("Loading CIR...\n");
-		cir_alloc_memory(&uwa->cir_r_1_buff_0, &uwa->cir_r_1_buff_1 ,lines);
-		cir_alloc_memory(&uwa->cir_i_1_buff_0, &uwa->cir_i_1_buff_1 ,lines);
-		cir_alloc_memory(&uwa->cir_r_2_buff_0, &uwa->cir_r_2_buff_1 ,lines);
-		cir_alloc_memory(&uwa->cir_i_2_buff_0, &uwa->cir_i_2_buff_1 ,lines);
+		cir_alloc_memory(&uwa->cir_r_1_buff_0, &uwa->cir_r_1_buff_1, 
+						 &uwa->cir_r_1_buff_2, &uwa->cir_r_1_buff_3, lines/4);
+		cir_alloc_memory(&uwa->cir_i_1_buff_0, &uwa->cir_i_1_buff_1, 
+						 &uwa->cir_i_1_buff_2, &uwa->cir_i_1_buff_3, lines/4);
+		cir_alloc_memory(&uwa->cir_r_2_buff_0, &uwa->cir_r_2_buff_1, 
+						 &uwa->cir_r_2_buff_2, &uwa->cir_r_2_buff_3, lines/4);
+		cir_alloc_memory(&uwa->cir_i_2_buff_0, &uwa->cir_i_2_buff_1, 
+						 &uwa->cir_i_2_buff_2, &uwa->cir_i_2_buff_3, lines/4);
 
 		//printf("Load CIR to buffer \n");
-		cir_init_memory(uwa->ch1_cir_r_fd, uwa->cir_r_1_buff_0, uwa->cir_r_1_buff_1 ,lines/2);
-		cir_init_memory(uwa->ch1_cir_i_fd, uwa->cir_i_1_buff_0, uwa->cir_i_1_buff_1 ,lines/2);
-		cir_init_memory(uwa->ch2_cir_r_fd, uwa->cir_r_2_buff_0, uwa->cir_r_2_buff_1 ,lines/2);
-		cir_init_memory(uwa->ch2_cir_i_fd, uwa->cir_i_2_buff_0, uwa->cir_i_2_buff_1 ,lines/2);
+		cir_init_memory(uwa->ch1_cir_r_fd, uwa->cir_r_1_buff_0, uwa->cir_r_1_buff_1,
+					    				   uwa->cir_r_1_buff_2, uwa->cir_r_1_buff_3, lines/4);
+		cir_init_memory(uwa->ch1_cir_i_fd, uwa->cir_i_1_buff_0, uwa->cir_i_1_buff_1,
+					    				   uwa->cir_i_1_buff_2, uwa->cir_i_1_buff_3, lines/4);
+		cir_init_memory(uwa->ch2_cir_r_fd, uwa->cir_r_2_buff_0, uwa->cir_r_2_buff_1,
+										   uwa->cir_r_2_buff_2, uwa->cir_r_2_buff_3, lines/4);
+		cir_init_memory(uwa->ch2_cir_i_fd, uwa->cir_i_2_buff_0, uwa->cir_i_2_buff_1, 
+										   uwa->cir_i_2_buff_2, uwa->cir_i_2_buff_3, lines/4);
 		/*
 		printf("cir_r_1_buff_0 address = %x\n",uwa->cir_r_1_buff_0);
 		printf("cir_r_1_buff_0 address = %x\n",uwa->cir_r_1_buff_0);
@@ -768,8 +816,8 @@ SND_PCM_PLUGIN_DEFINE_FUNC(uwa)
 	snd_config_iterator_t i, next;
 	struct snd_pcm_uwa *uwa_plug;
 	snd_config_t *sconf = NULL;
-	int err, nfir_coef;
-	long tau0_1_us,tau0_2_us ;
+	int err;
+	long tau0_1_us,tau0_2_us,ncoef,cir_update_rate ;
 
 	snd_config_for_each(i, next, conf) {
 		snd_config_t *n = snd_config_iterator_entry(i);
@@ -803,14 +851,24 @@ SND_PCM_PLUGIN_DEFINE_FUNC(uwa)
 			tau0_2_us = val;
 			continue;
 		}
-		if (strcmp(id, "nfir_coef") == 0) {
+		if (strcmp(id, "ncoef") == 0) {
 			long val;
 			err = snd_config_get_integer(n, &val);
 			if (err < 0) {
 				SNDERR("Invalid value for %s", id);
 				return err;
 			}
-			nfir_coef = val;
+			ncoef = val;
+			continue;
+		}
+		if (strcmp(id, "cir_update_rate_us") == 0) {
+			long val;
+			err = snd_config_get_integer(n, &val);
+			if (err < 0) {
+				SNDERR("Invalid value for %s", id);
+				return err;
+			}
+			cir_update_rate = val;
 			continue;
 		}
 		SNDERR("Unknown field %s", id);
@@ -842,9 +900,16 @@ SND_PCM_PLUGIN_DEFINE_FUNC(uwa)
 		tau0_2_us = 1;
 	else if (tau0_2_us > 3000000)
 		tau0_2_us = 3000000;
+
 	uwa_plug->tau0_us[1] = tau0_2_us;
 	uwa_plug->init_done = 0;
-	uwa_plug->nfir_coef = nfir_coef;
+	uwa_plug->ncoef = ncoef;
+
+	if (cir_update_rate <= 30000 )
+		cir_update_rate = 30000;
+	else if (cir_update_rate > 3000000)
+		cir_update_rate = 3000000;
+	uwa_plug->cir_update_rate_us =cir_update_rate;
 
 	err = snd_pcm_extplug_create(&uwa_plug->ext, name, root, sconf, stream, mode);
 	if (err < 0) {
