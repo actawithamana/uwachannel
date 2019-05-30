@@ -51,3 +51,58 @@ typedef struct {
 } XUwachannel_accelerator_uio_info;
 
 
+typedef struct snd_pcm_uwa {
+	snd_pcm_extplug_t ext;
+	int framesent;
+	int init_done;	
+	int time_variant;
+	int verbose;
+	// DMA proxy 
+	uwa_dma_t *tx_proxy_interface_p;
+	uwa_dma_t *rx_proxy_interface_p;
+	int tx_proxy_fd;
+	int rx_proxy_fd;
+	snd_pcm_channel_area_t *uwa_input;
+	snd_pcm_channel_area_t *uwa_output;
+	// UWA-CA ctrl
+	XUwachannel_accelerator uwa_ca_dev;
+	char *InstanceName; 
+	// CIR FD
+	FILE* ch1_cir_r_fd;
+	FILE* ch1_cir_i_fd;
+	FILE* ch2_cir_r_fd;
+	FILE* ch2_cir_i_fd;
+	// CIR Buffer Pointers
+	int *cir_r_1_buff_0;
+	int *cir_r_1_buff_1;
+	int *cir_r_1_buff_2;
+	int *cir_r_1_buff_3;
+	int *cir_i_1_buff_0;
+	int *cir_i_1_buff_1;	
+	int *cir_i_1_buff_2;
+	int *cir_i_1_buff_3;
+	int *cir_r_2_buff_0;
+	int *cir_r_2_buff_1;
+	int *cir_r_2_buff_2;
+	int *cir_r_2_buff_3;
+	int *cir_i_2_buff_0;
+	int *cir_i_2_buff_1;
+	int *cir_i_2_buff_2;
+	int *cir_i_2_buff_3;
+	//CIR Status
+	int cir_pos; 
+	int ncir;
+	int start_flag;
+	int throw_unstable_flag;
+	int ncoef;
+	long cir_update_rate_us;
+    int autorestart;
+	snd_pcm_uframes_t cir_update_rate_frames;
+	// Propagation Delay (tau0) for two communication link
+	snd_pcm_channel_area_t *tau0[2];
+	int *buf_tau0[2];
+	unsigned int curpos[2];
+	long tau0_us[2];
+	snd_pcm_uframes_t tau0_frames[2];
+} snd_pcm_uwa_t;
+

@@ -13,60 +13,6 @@
 
 static XUwachannel_accelerator_uio_info uio_info;
 
-typedef struct snd_pcm_uwa {
-	snd_pcm_extplug_t ext;
-	int framesent;
-	int init_done;	
-	int time_variant;
-	int verbose;
-	// DMA proxy 
-	uwa_dma_t *tx_proxy_interface_p;
-	uwa_dma_t *rx_proxy_interface_p;
-	int tx_proxy_fd;
-	int rx_proxy_fd;
-	snd_pcm_channel_area_t *uwa_input;
-	snd_pcm_channel_area_t *uwa_output;
-	// UWA-CA ctrl
-	XUwachannel_accelerator uwa_ca_dev;
-	char *InstanceName; 
-	// CIR FD
-	FILE* ch1_cir_r_fd;
-	FILE* ch1_cir_i_fd;
-	FILE* ch2_cir_r_fd;
-	FILE* ch2_cir_i_fd;
-	// CIR Buffer Pointers
-	int *cir_r_1_buff_0;
-	int *cir_r_1_buff_1;
-	int *cir_r_1_buff_2;
-	int *cir_r_1_buff_3;
-	int *cir_i_1_buff_0;
-	int *cir_i_1_buff_1;	
-	int *cir_i_1_buff_2;
-	int *cir_i_1_buff_3;
-	int *cir_r_2_buff_0;
-	int *cir_r_2_buff_1;
-	int *cir_r_2_buff_2;
-	int *cir_r_2_buff_3;
-	int *cir_i_2_buff_0;
-	int *cir_i_2_buff_1;
-	int *cir_i_2_buff_2;
-	int *cir_i_2_buff_3;
-	//CIR Status
-	int cir_pos; 
-	int ncir;
-	int start_flag;
-	int throw_unstable_flag;
-	int ncoef;
-	long cir_update_rate_us;
-	snd_pcm_uframes_t cir_update_rate_frames;
-	// Propagation Delay (tau0) for two communication link
-	snd_pcm_channel_area_t *tau0[2];
-	int *buf_tau0[2];
-	unsigned int curpos[2];
-	long tau0_us[2];
-	snd_pcm_uframes_t tau0_frames[2];
-} snd_pcm_uwa_t;
-
 
 static void *threadTX (void* ext) 
 {
@@ -443,7 +389,7 @@ static snd_pcm_sframes_t uwa_transfer(snd_pcm_extplug_t *ext,
 	int nframes = 96;			
 	int nchannels = 2;
 	int packetsize = nframes * nchannels ;
-	float threshold = 0.2;
+	float threshold = 0.3;
 	
 	//DMA transfer always UWA-CA packet size
 	uwa->tx_proxy_interface_p->length = packetsize * width / 8;  //convert frame to bytes
@@ -455,11 +401,13 @@ static snd_pcm_sframes_t uwa_transfer(snd_pcm_extplug_t *ext,
 			if (uwa->framesent >= 24000){
 				uwa->throw_unstable_flag = 1;
 				uwa->framesent = 0;
+
 				// Update first array of CIR
 				reload_cir(uwa, uwa->cir_pos * uwa->ncoef/4, uwa->ncoef/4);
 				printf ("CIR Updated, Position: %i \n", uwa->cir_pos);
 				uwa->cir_pos += 1;
 				printf("Emulator Ready. \n");
+				
 			} else {
 				snd_pcm_areas_copy(dst_areas, dst_offset, src_areas , src_offset,
 				 	 2, size, SND_PCM_FORMAT_S32);
@@ -474,6 +422,7 @@ static snd_pcm_sframes_t uwa_transfer(snd_pcm_extplug_t *ext,
 					max_val = val;		
 				};
 			};
+
 			if (max_val >= threshold) {
 				uwa->start_flag = 1;
 				uwa->framesent = 0;
@@ -516,6 +465,7 @@ static snd_pcm_sframes_t uwa_transfer(snd_pcm_extplug_t *ext,
 				uwa->framesent += size;
 
 			} else {
+				
 				// Activate Hardware Accelerator
 				UWA_CA_start(uwa);
 				sts = XUwachannel_accelerator_IsReady (&uwa->uwa_ca_dev);
@@ -551,8 +501,7 @@ static snd_pcm_sframes_t uwa_transfer(snd_pcm_extplug_t *ext,
 				} else goto __retry2; 
 
 				uwa->framesent += size;
-				//snd_pcm_areas_copy(dst_areas, dst_offset, src_areas , src_offset,
-				 // 	               2, size, SND_PCM_FORMAT_S32);
+
 			};
 
 		};
@@ -569,8 +518,14 @@ static snd_pcm_sframes_t uwa_transfer(snd_pcm_extplug_t *ext,
 				uwa->cir_pos += 1;
 				uwa->framesent = 0;
 				if (uwa->cir_pos == uwa->ncir){
-					uwa->cir_pos = 0;
-					printf ("NCIR: %i CIR Rewind!\n",uwa->ncir);
+					if (!uwa->autorestart){
+						uwa->cir_pos = 0;
+						printf ("NCIR: %i CIR Rewind!\n",uwa->ncir);
+					} else {
+						uwa->start_flag = 0;
+						uwa->cir_pos = 0;
+						printf ("Auto Restart. \n");
+					}
 				}
 			}	
 		}
@@ -852,8 +807,8 @@ SND_PCM_PLUGIN_DEFINE_FUNC(uwa)
 	snd_config_iterator_t i, next;
 	struct snd_pcm_uwa *uwa_plug;
 	snd_config_t *sconf = NULL;
-	int err, verbose;
-	long tau0_1_us,tau0_2_us,ncoef,cir_update_rate ;
+	int err, verbose, autorestart;
+	long tau0_1_us,tau0_2_us,ncoef,cir_update_rate;
 
 	snd_config_for_each(i, next, conf) {
 		snd_config_t *n = snd_config_iterator_entry(i);
@@ -917,6 +872,16 @@ SND_PCM_PLUGIN_DEFINE_FUNC(uwa)
 			verbose = val;
 			continue;
 		}
+		if (strcmp(id, "autorestart") == 0) {
+			int val;
+			err = snd_config_get_integer(n, &val);
+			if (err < 0) {
+				SNDERR("Invalid value for %s", id);
+				return err;
+			}
+			autorestart = val;
+			continue;
+		}
 		SNDERR("Unknown field %s", id);
                 return -EINVAL;
 	}
@@ -962,6 +927,12 @@ SND_PCM_PLUGIN_DEFINE_FUNC(uwa)
 	else if (verbose > 1)
 		verbose = 1;
 	uwa_plug->verbose =verbose;
+
+	if (autorestart <= 0 )
+		autorestart = 0;
+	else if (autorestart > 1)
+		autorestart = 1;
+	uwa_plug->autorestart =autorestart;
 
 	err = snd_pcm_extplug_create(&uwa_plug->ext, name, root, sconf, stream, mode);
 	if (err < 0) {
