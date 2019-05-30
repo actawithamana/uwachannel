@@ -17,7 +17,7 @@ old_library=''
 inherited_linker_flags=''
 
 # Libraries that this one depends upon.
-dependency_libs=' /opt/poky/2.1/sysroots/cortexa9hf-neon-poky-linux-gnueabi/usr/lib/libasound.la -lm -ldl -lpthread -lrt'
+dependency_libs=' /opt/poky/2.1+snapshot/sysroots/cortexa9hf-neon-poky-linux-gnueabi/usr/lib/libasound.la -lm -ldl -lpthread -lrt'
 
 # Names of additional weak libraries provided by this library
 weak_library_names=''

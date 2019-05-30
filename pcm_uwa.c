@@ -18,6 +18,7 @@ typedef struct snd_pcm_uwa {
 	int framesent;
 	int init_done;	
 	int time_variant;
+	int verbose;
 	// DMA proxy 
 	uwa_dma_t *tx_proxy_interface_p;
 	uwa_dma_t *rx_proxy_interface_p;
@@ -454,6 +455,10 @@ static snd_pcm_sframes_t uwa_transfer(snd_pcm_extplug_t *ext,
 			if (uwa->framesent >= 24000){
 				uwa->throw_unstable_flag = 1;
 				uwa->framesent = 0;
+				// Update first array of CIR
+				reload_cir(uwa, uwa->cir_pos * uwa->ncoef/4, uwa->ncoef/4);
+				printf ("CIR Updated, Position: %i \n", uwa->cir_pos);
+				uwa->cir_pos += 1;
 				printf("Emulator Ready. \n");
 			} else {
 				snd_pcm_areas_copy(dst_areas, dst_offset, src_areas , src_offset,
@@ -474,11 +479,6 @@ static snd_pcm_sframes_t uwa_transfer(snd_pcm_extplug_t *ext,
 				uwa->framesent = 0;
 				printf("Start Emulator! \n");	
 	
-				// Update first array of CIR
-				reload_cir(uwa, uwa->cir_pos * uwa->ncoef/4, uwa->ncoef/4);
-				printf ("CIR Updated, Position: %i \n", uwa->cir_pos);
-				uwa->cir_pos += 1;
-
 				// Activate Hardware Accelerator
 				UWA_CA_start(uwa);
 				sts = XUwachannel_accelerator_IsReady (&uwa->uwa_ca_dev);
@@ -516,8 +516,43 @@ static snd_pcm_sframes_t uwa_transfer(snd_pcm_extplug_t *ext,
 				uwa->framesent += size;
 
 			} else {
-				snd_pcm_areas_copy(dst_areas, dst_offset, src_areas , src_offset,
-				  	               2, size, SND_PCM_FORMAT_S32);
+				// Activate Hardware Accelerator
+				UWA_CA_start(uwa);
+				sts = XUwachannel_accelerator_IsReady (&uwa->uwa_ca_dev);
+
+				// Transfer
+				__retry2:
+				if (!sts){
+
+				delayed_copy(uwa, uwa->uwa_input, 0, src_areas, src_offset, size);
+				/*snd_pcm_areas_copy(uwa->uwa_input, 0, src_areas , src_offset,
+					  2, size, SND_PCM_FORMAT_S32);*/
+
+				s = pthread_create (&tid1, NULL, threadTX, uwa);
+				if (s!=0)
+					SNDERR("pthread_create TX failed");	
+
+				s = pthread_create (&tid2, NULL, threadRX, uwa);
+				if (s!=0)
+					SNDERR("pthread_create RX failed");
+
+				s = pthread_join(tid1, NULL);
+				if (s!=0)
+					SNDERR("pthread_join TX failed");
+
+				s = pthread_join(tid2, NULL);
+				if (s!=0)
+					SNDERR("pthread_join RX failed");
+
+				//curent assumption is fixed 96*2 frame size; 
+				snd_pcm_areas_copy(dst_areas, dst_offset , uwa->uwa_output, 0,
+						           2, size, SND_PCM_FORMAT_S32);	
+	
+				} else goto __retry2; 
+
+				uwa->framesent += size;
+				//snd_pcm_areas_copy(dst_areas, dst_offset, src_areas , src_offset,
+				 // 	               2, size, SND_PCM_FORMAT_S32);
 			};
 
 		};
@@ -529,6 +564,7 @@ static snd_pcm_sframes_t uwa_transfer(snd_pcm_extplug_t *ext,
 		if (uwa->time_variant){
 			if (uwa->framesent == uwa->cir_update_rate_frames) {
 				reload_cir(uwa, uwa->cir_pos * uwa->ncoef/4, uwa->ncoef/4);
+				if (uwa->verbose > 0)
 				printf ("CIR Updated, Position: %i \n", uwa->cir_pos);
 				uwa->cir_pos += 1;
 				uwa->framesent = 0;
@@ -816,7 +852,7 @@ SND_PCM_PLUGIN_DEFINE_FUNC(uwa)
 	snd_config_iterator_t i, next;
 	struct snd_pcm_uwa *uwa_plug;
 	snd_config_t *sconf = NULL;
-	int err;
+	int err, verbose;
 	long tau0_1_us,tau0_2_us,ncoef,cir_update_rate ;
 
 	snd_config_for_each(i, next, conf) {
@@ -871,6 +907,16 @@ SND_PCM_PLUGIN_DEFINE_FUNC(uwa)
 			cir_update_rate = val;
 			continue;
 		}
+		if (strcmp(id, "verbose") == 0) {
+			int val;
+			err = snd_config_get_integer(n, &val);
+			if (err < 0) {
+				SNDERR("Invalid value for %s", id);
+				return err;
+			}
+			verbose = val;
+			continue;
+		}
 		SNDERR("Unknown field %s", id);
                 return -EINVAL;
 	}
@@ -910,6 +956,12 @@ SND_PCM_PLUGIN_DEFINE_FUNC(uwa)
 	else if (cir_update_rate > 3000000)
 		cir_update_rate = 3000000;
 	uwa_plug->cir_update_rate_us =cir_update_rate;
+
+	if (verbose <= 0 )
+		verbose = 0;
+	else if (verbose > 1)
+		verbose = 1;
+	uwa_plug->verbose =verbose;
 
 	err = snd_pcm_extplug_create(&uwa_plug->ext, name, root, sconf, stream, mode);
 	if (err < 0) {
