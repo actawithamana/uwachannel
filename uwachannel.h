@@ -104,5 +104,10 @@ typedef struct snd_pcm_uwa {
 	unsigned int curpos[2];
 	long tau0_us[2];
 	snd_pcm_uframes_t tau0_frames[2];
+	//Zeros
+	snd_pcm_channel_area_t *zeros;
+	unsigned char  *buf_zeros[2];
+	snd_pcm_channel_area_t *dummy;
+	unsigned char *buf_dummy[2];
 } snd_pcm_uwa_t;
 

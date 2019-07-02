@@ -409,7 +409,9 @@ static snd_pcm_sframes_t uwa_transfer(snd_pcm_extplug_t *ext,
 				printf("Emulator Ready. \n");
 				
 			} else {
-				snd_pcm_areas_copy(dst_areas, dst_offset, src_areas , src_offset,
+				snd_pcm_areas_copy(uwa->dummy, 0, src_areas , src_offset,
+				 	 2, size, SND_PCM_FORMAT_S32);
+				snd_pcm_areas_copy(dst_areas, dst_offset, uwa->zeros , 0,
 				 	 2, size, SND_PCM_FORMAT_S32);
 				uwa->framesent+=size;
 			};
@@ -495,8 +497,10 @@ static snd_pcm_sframes_t uwa_transfer(snd_pcm_extplug_t *ext,
 					SNDERR("pthread_join RX failed");
 
 				//curent assumption is fixed 96*2 frame size; 
-				snd_pcm_areas_copy(dst_areas, dst_offset , uwa->uwa_output, 0,
-						           2, size, SND_PCM_FORMAT_S32);	
+				snd_pcm_areas_copy(uwa->dummy, 0, src_areas , src_offset,
+				 	 2, size, SND_PCM_FORMAT_S32);
+				snd_pcm_areas_copy(dst_areas, dst_offset, uwa->zeros , 0,
+				 	 2, size, SND_PCM_FORMAT_S32);	
 	
 				} else goto __retry2; 
 
@@ -648,6 +652,35 @@ static int uwa_init (snd_pcm_extplug_t *ext) {
 			uwa->curpos[i] = 0;
 		};
 
+		// Zero Data 
+
+		uwa->zeros = calloc(2, sizeof(snd_pcm_channel_area_t));
+				if (uwa->zeros == NULL)
+					return -ENOMEM;
+		uwa->dummy = calloc(2, sizeof(snd_pcm_channel_area_t));
+				if (uwa->dummy == NULL)
+					return -ENOMEM;
+
+		for (chn=0; chn < channels; chn++) {
+			uwa->buf_zeros[chn] = calloc(96*2, 
+				(snd_pcm_format_physical_width(SND_PCM_FORMAT_S32)/8));
+				if (uwa->buf_zeros[chn] == NULL)
+					return -ENOMEM;
+
+			uwa->buf_dummy[chn] = calloc(96*2, 
+				(snd_pcm_format_physical_width(SND_PCM_FORMAT_S32)/8));
+				if (uwa->buf_dummy[chn] == NULL)
+					return -ENOMEM;
+
+			uwa->zeros[chn].addr = uwa->buf_zeros[chn];
+			uwa->zeros[chn].first = chn * snd_pcm_format_physical_width(SND_PCM_FORMAT_S32);
+			uwa->zeros[chn].step = channels * snd_pcm_format_physical_width(SND_PCM_FORMAT_S32);
+
+			uwa->dummy[chn].addr = uwa->buf_dummy[chn];
+			uwa->dummy[chn].first = chn * snd_pcm_format_physical_width(SND_PCM_FORMAT_S32);
+			uwa->dummy[chn].step = channels * snd_pcm_format_physical_width(SND_PCM_FORMAT_S32);
+		};
+
 		
 		// UWA-CA Init
 		uwa->InstanceName = "uwachannel_accelerator";
@@ -698,16 +731,19 @@ static int uwa_init (snd_pcm_extplug_t *ext) {
 		l = get_number_of_lines(uwa->ch1_cir_i_fd);
 		if (l != lines){
 			SNDERR("CIR Number Inequal.");	
+			exit (-1);
 		}
 		
 		l = get_number_of_lines(uwa->ch2_cir_r_fd);
 		if (l != lines){
 			SNDERR("CIR Number Inequal.");	
+			exit (-1);
 		}
 		
 		l = get_number_of_lines(uwa->ch2_cir_i_fd);
 		if (l != lines){
 			SNDERR("CIR Number Inequal.");	
+			exit (-1);
 		}
 
 		uwa->ncir=l/uwa->ncoef;
@@ -792,6 +828,8 @@ static int uwa_close (snd_pcm_extplug_t *ext) {
 	free (uwa->tau0[1]);
 	free (uwa->buf_tau0[0]);
 	free (uwa->buf_tau0[1]);
+	free (uwa->zeros);
+	free (uwa->dummy);
 	return 0;
 }
 
@@ -807,8 +845,8 @@ SND_PCM_PLUGIN_DEFINE_FUNC(uwa)
 	snd_config_iterator_t i, next;
 	struct snd_pcm_uwa *uwa_plug;
 	snd_config_t *sconf = NULL;
-	int err, verbose, autorestart;
-	long tau0_1_us,tau0_2_us,ncoef,cir_update_rate;
+	int err;
+	long tau0_1_us,tau0_2_us,ncoef,cir_update_rate, verbose, autorestart;
 
 	snd_config_for_each(i, next, conf) {
 		snd_config_t *n = snd_config_iterator_entry(i);
@@ -863,7 +901,7 @@ SND_PCM_PLUGIN_DEFINE_FUNC(uwa)
 			continue;
 		}
 		if (strcmp(id, "verbose") == 0) {
-			int val;
+			long val;
 			err = snd_config_get_integer(n, &val);
 			if (err < 0) {
 				SNDERR("Invalid value for %s", id);
@@ -873,7 +911,7 @@ SND_PCM_PLUGIN_DEFINE_FUNC(uwa)
 			continue;
 		}
 		if (strcmp(id, "autorestart") == 0) {
-			int val;
+			long val;
 			err = snd_config_get_integer(n, &val);
 			if (err < 0) {
 				SNDERR("Invalid value for %s", id);
