@@ -389,10 +389,13 @@ static snd_pcm_sframes_t uwa_transfer(snd_pcm_extplug_t *ext,
 	int nframes = 96;			
 	int nchannels = 2;
 	int packetsize = nframes * nchannels ;
+	int noisechannel = 1;
+	int noiseframe = noisechannel*nframes;
 	float threshold = 0.3;
 	
 	//DMA transfer always UWA-CA packet size
-	uwa->tx_proxy_interface_p->length = packetsize * width / 8;  //convert frame to bytes
+	//convert frame to bytes
+	uwa->tx_proxy_interface_p->length = (packetsize + noiseframe) * width / 8;  // Add noise channel
 	uwa->rx_proxy_interface_p->length = packetsize * width / 8;
 
 	if (!uwa->start_flag) {
@@ -609,7 +612,7 @@ static int uwa_init (snd_pcm_extplug_t *ext) {
 				return 1;
 			}
 		
-		uwa->uwa_input = calloc(2, sizeof(snd_pcm_channel_area_t));
+		uwa->uwa_input = calloc(2 + 1, sizeof(snd_pcm_channel_area_t)); // added noise channel
 			if (uwa->uwa_input == NULL) {
 					printf("No enough memory\n");
 					exit(EXIT_FAILURE);
@@ -621,11 +624,14 @@ static int uwa_init (snd_pcm_extplug_t *ext) {
 					exit(EXIT_FAILURE);
 			}
 
-		for (chn = 0; chn < channels; chn++)  {
+
+		for (chn = 0; chn < (channels + 1); chn++)  { //added noise channel L|R|Noise
 			uwa->uwa_input[chn].addr = &uwa->tx_proxy_interface_p->buffer ;
 			uwa->uwa_input[chn].first = chn * snd_pcm_format_physical_width(SND_PCM_FORMAT_S32);
-			uwa->uwa_input[chn].step = channels * snd_pcm_format_physical_width(SND_PCM_FORMAT_S32);
-			
+			uwa->uwa_input[chn].step = (channels + 1) * snd_pcm_format_physical_width(SND_PCM_FORMAT_S32);
+			}
+
+		for (chn = 0; chn < channels; chn++)  {
 			uwa->uwa_output[chn].addr = &uwa->rx_proxy_interface_p->buffer ;
 			uwa->uwa_output[chn].first = chn * snd_pcm_format_physical_width(SND_PCM_FORMAT_S32);
 			uwa->uwa_output[chn].step = channels * snd_pcm_format_physical_width(SND_PCM_FORMAT_S32);
