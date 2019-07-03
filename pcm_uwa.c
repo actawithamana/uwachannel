@@ -8,6 +8,8 @@
 #include <math.h>
 #include <pthread.h>
 #include <errno.h>
+#include <time.h>
+
 #include "uwachannel.h"
 #include "xuwachannel_accelerator.h"
 
@@ -207,6 +209,26 @@ static float fixed24bittofloat (int x){
 	return y;
 }
 
+static int float2fixed_32_28 (float n){
+    int int_part = 0, frac_part = 0;
+    int i;
+    float t;
+
+    int_part = (int)floor(n) << 28;
+    n -= (int)floor(n);
+
+    t = 0.5;
+    for (i = 0; i < 28; i++) {
+        if ((n - t) >= 0) {
+            n -= t;
+            frac_part += (1 << (28 - 1 - i));
+        }
+        t = t /2;
+    }
+
+    return int_part + frac_part;
+}
+
 static void reload_cir (snd_pcm_uwa_t* uwa, int index, int length){
 
 	
@@ -362,6 +384,52 @@ static void delayed_copy(snd_pcm_uwa_t *uwa,
 	}
 };
 
+static float AWGN_generator()
+{/* Generates additive white Gaussian Noise samples with zero mean and a standard deviation of 1. */
+ /* https://www.embeddedrelated.com/showcode/311.php  */
+
+  float temp1;
+  float temp2;
+  float result;
+  int p;
+
+  p = 1;
+
+  while( p > 0 )
+  {
+	temp2 = ( rand() / ( (float)RAND_MAX ) ); /*  rand() function generates an
+                                                       integer between 0 and  RAND_MAX,
+                                                       which is defined in stdlib.h.
+                                                   */
+
+    if ( temp2 == 0 )
+    {// temp2 is >= (RAND_MAX / 2)
+      p = 1;
+    }// end if
+    else
+    {// temp2 is < (RAND_MAX / 2)
+       p = -1;
+    }// end else
+
+  }// end while()
+
+  temp1 = cos( ( 2.0 * (float)PI ) * rand() / ( (float)RAND_MAX ) );
+  result = sqrt( -2.0 * log( temp2 ) ) * temp1;
+
+  return result;	// return the generated random sample to the caller
+
+}
+
+static void fill_noise(snd_pcm_uwa_t *uwa,
+			 unsigned int size)
+{
+	float n;
+	for (int i=0 ; i < size; i++){
+		n = uwa->noise_sigma * AWGN_generator();
+		uwa->buf_noise[i] = float2fixed_32_28(n);
+	}
+}
+
 
 static snd_pcm_sframes_t uwa_transfer(snd_pcm_extplug_t *ext,
 	       			      const snd_pcm_channel_area_t *dst_areas,
@@ -386,6 +454,7 @@ static snd_pcm_sframes_t uwa_transfer(snd_pcm_extplug_t *ext,
 	width = snd_pcm_format_physical_width(SND_PCM_FORMAT_S32);
 
 	//UWA Channel Accelerator (UWA-CA) Parameters
+	//Currently some parameters are deterministic
 	int nframes = 96;			
 	int nchannels = 2;
 	int packetsize = nframes * nchannels ;
@@ -397,6 +466,11 @@ static snd_pcm_sframes_t uwa_transfer(snd_pcm_extplug_t *ext,
 	//convert frame to bytes
 	uwa->tx_proxy_interface_p->length = (packetsize + noiseframe) * width / 8;  // Add noise channel
 	uwa->rx_proxy_interface_p->length = packetsize * width / 8;
+	
+	//Fill Noise Buffer
+	if (uwa->noise_sigma > 0.0){
+		fill_noise(uwa, size);
+	}
 
 	if (!uwa->start_flag) {
 		//Throw first 0.5 s because unstable value;
@@ -444,6 +518,7 @@ static snd_pcm_sframes_t uwa_transfer(snd_pcm_extplug_t *ext,
 				delayed_copy(uwa, uwa->uwa_input, 0, src_areas, src_offset, size);
 				/*snd_pcm_areas_copy(uwa->uwa_input, 0, src_areas , src_offset,
 					  2, size, SND_PCM_FORMAT_S32);*/
+				snd_pcm_area_copy(uwa->uwa_input + 2, 0, uwa->noise, 0, size,  SND_PCM_FORMAT_S32);
 
 				s = pthread_create (&tid1, NULL, threadTX, uwa);
 				if (s!=0)
@@ -482,6 +557,7 @@ static snd_pcm_sframes_t uwa_transfer(snd_pcm_extplug_t *ext,
 				delayed_copy(uwa, uwa->uwa_input, 0, src_areas, src_offset, size);
 				/*snd_pcm_areas_copy(uwa->uwa_input, 0, src_areas , src_offset,
 					  2, size, SND_PCM_FORMAT_S32);*/
+				snd_pcm_area_copy(uwa->uwa_input + 2, 0, uwa->noise, 0, size,  SND_PCM_FORMAT_S32);
 
 				s = pthread_create (&tid1, NULL, threadTX, uwa);
 				if (s!=0)
@@ -546,6 +622,8 @@ static snd_pcm_sframes_t uwa_transfer(snd_pcm_extplug_t *ext,
 				delayed_copy(uwa, uwa->uwa_input, 0, src_areas, src_offset, size);
 				/*snd_pcm_areas_copy(uwa->uwa_input, 0, src_areas , src_offset,
 					  2, size, SND_PCM_FORMAT_S32);*/
+				snd_pcm_area_copy(uwa->uwa_input + 2, 0, uwa->noise, 0, size,  SND_PCM_FORMAT_S32);
+				
 				s = pthread_create (&tid1, NULL, threadTX, uwa);
 				if (s!=0)
 					SNDERR("pthread_create TX failed");	
@@ -687,7 +765,24 @@ static int uwa_init (snd_pcm_extplug_t *ext) {
 			uwa->dummy[chn].step = channels * snd_pcm_format_physical_width(SND_PCM_FORMAT_S32);
 		};
 
-		
+		// Noise
+
+		// Random Number seed init
+		srand(time(0));  
+
+		uwa->noise = calloc(1, sizeof(snd_pcm_channel_area_t));
+				if (uwa->noise == NULL)
+					return -ENOMEM;
+
+		uwa->buf_noise = calloc(96*2, 
+				(snd_pcm_format_physical_width(SND_PCM_FORMAT_S32)/8));
+				if (uwa->buf_noise == NULL)
+					return -ENOMEM;
+
+		uwa->noise->addr = uwa->buf_noise;
+		uwa->noise->first = 1 * snd_pcm_format_physical_width(SND_PCM_FORMAT_S32);
+		uwa->noise->step = 1 * snd_pcm_format_physical_width(SND_PCM_FORMAT_S32);		
+
 		// UWA-CA Init
 		uwa->InstanceName = "uwachannel_accelerator";
 
@@ -836,6 +931,7 @@ static int uwa_close (snd_pcm_extplug_t *ext) {
 	free (uwa->buf_tau0[1]);
 	free (uwa->zeros);
 	free (uwa->dummy);
+	free (uwa->noise);
 	return 0;
 }
 
@@ -853,6 +949,7 @@ SND_PCM_PLUGIN_DEFINE_FUNC(uwa)
 	snd_config_t *sconf = NULL;
 	int err;
 	long tau0_1_us,tau0_2_us,ncoef,cir_update_rate, verbose, autorestart;
+	float noise_sigma;
 
 	snd_config_for_each(i, next, conf) {
 		snd_config_t *n = snd_config_iterator_entry(i);
@@ -926,6 +1023,16 @@ SND_PCM_PLUGIN_DEFINE_FUNC(uwa)
 			autorestart = val;
 			continue;
 		}
+		if (strcmp(id, "noise_sigma") == 0) {
+			double val;
+			err = snd_config_get_real(n, &val);
+			if (err < 0) {
+				SNDERR("Invalid value for %s", id);
+				return err;
+			}
+			noise_sigma =  val;
+			continue;
+		}
 		SNDERR("Unknown field %s", id);
                 return -EINVAL;
 	}
@@ -977,6 +1084,12 @@ SND_PCM_PLUGIN_DEFINE_FUNC(uwa)
 	else if (autorestart > 1)
 		autorestart = 1;
 	uwa_plug->autorestart =autorestart;
+	
+	if (noise_sigma <= 0 )
+		noise_sigma = 0;
+	else if (noise_sigma > 1)
+		noise_sigma = 1;
+	uwa_plug->noise_sigma =noise_sigma;
 
 	err = snd_pcm_extplug_create(&uwa_plug->ext, name, root, sconf, stream, mode);
 	if (err < 0) {

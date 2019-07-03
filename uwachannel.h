@@ -1,5 +1,7 @@
 #include "xuwachannel_accelerator.h"
 
+#define PI 3.1415926536
+
 /********************************* DMA **************************************
  * This header file is shared between the DMA Proxy test application and 
  * the DMA Proxy device driver. It defines the shared interface to allow 
@@ -109,5 +111,9 @@ typedef struct snd_pcm_uwa {
 	unsigned char  *buf_zeros[2];
 	snd_pcm_channel_area_t *dummy;
 	unsigned char *buf_dummy[2];
+	//Noise Channel
+	snd_pcm_channel_area_t *noise;
+	int *buf_noise;
+	float noise_sigma;
 } snd_pcm_uwa_t;
 
